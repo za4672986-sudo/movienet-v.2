@@ -1,22 +1,32 @@
 from fastapi import Depends, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
 from jose import JWTError, jwt
 
-from app.core.security import SECRET_KEY, ALGORITHM
+from app.core.config import settings
+
 
 security = HTTPBearer()
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(
+        security
+    ),
 ):
+
     token = credentials.credentials
 
     try:
+
         payload = jwt.decode(
             token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
+            settings.JWT_SECRET_KEY,
+            algorithms=[
+                settings.JWT_ALGORITHM
+            ],
         )
 
         user_id = payload.get("sub")
@@ -24,15 +34,23 @@ def get_current_user(
         if not user_id:
             raise HTTPException(
                 status_code=401,
-                detail="Invalid token",
+                detail="Invalid authentication token",
             )
 
         return {
             "user_id": int(user_id)
         }
 
-    except JWTError:
+    except (
+        JWTError,
+        ValueError,
+        TypeError,
+    ):
+
         raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+        )
             status_code=401,
             detail="Invalid or expired token",
         )
